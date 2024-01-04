@@ -1,0 +1,99 @@
+---
+grafana:
+  service: 
+    type: ClusterIP
+  grafanaSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: yc-network-hdd
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  service: 
+    type: ClusterIP
+  
+  config:
+    global:
+      resolve_timeout: 1m
+
+    route:
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 30m
+      receiver: "telegram"
+      routes:
+        - receiver: "telegram"
+          group_wait: 10s
+          match_re:
+            severity: critical|warning
+          continue: true
+
+    receivers:
+    - name: "telegram"
+      telegram_configs:
+      - send_resolved: true
+        api_url: https://api.telegram.org
+        parse_mode: 'HTML'
+        bot_token: '5933756043:AAE8JLL5KIzgrNBeTP5e-1bkbJy4YRoeGjs'
+        chat_id: -1001634310929
+        message: "Test Alert 3779"
+    templates:
+    - '/etc/alertmanager/config/*.tmpl'
+
+prometheus:
+  service: 
+    type: ClusterIP
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: yc-network-hdd
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    additionalScrapeConfigs:
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - default
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        regex: (.+);(.+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        regex: (.+)
+        target_label: __metrics_path__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+additionalPrometheusRulesMap:
+  rule-name:
+    groups:
+    - name: momo-store rules
+      rules:
+      - alert: MemoryAlert
+        expr: jvm_memory_max_bytes > 10
+        for: 1m
+        labels:
+          severity: critical
+          project: "momo-store"
+          component: "backend"
+

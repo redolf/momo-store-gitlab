@@ -1,0 +1,15 @@
+---
+apiVersion: {{ .Values.frontend.service.apiVersion }}
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.frontend.service.spec.ports.port_1 }}
+      protocol: {{ .Values.frontend.service.spec.ports.protocol_1 }}
+      targetPort: {{ .Values.frontend.service.spec.ports.targetPort_1 }}
+  selector:
+    app: {{ .Chart.Name }}

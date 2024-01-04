@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+data:
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name  default_server;
+        root   /app;
+        index  index.html;
+        try_files $uri $uri/ /index.html;
+        
+        location /products {
+        proxy_pass http://backend:8081;
+        }
+        location /categories {
+        proxy_pass http://backend:8081;
+        }
+        location /orders {
+        proxy_pass http://backend:8081;
+        }
+        location /auth {
+        proxy_pass http://backend:8081;
+        }
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+        root   /usr/share/nginx/html;
+        }
+    }

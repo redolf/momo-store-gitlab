@@ -1,0 +1,60 @@
+variables:
+  VERSION: 1.0.${CI_PIPELINE_ID}
+
+include:
+  - project: "templates/ci"
+    file: "DockerInDockerTemplate.yml"
+  - template: Security/SAST.gitlab-ci.yml
+  - remote: https://gitlab.com/gitlab-org/gitlab/-/raw/2851f4d5/lib/gitlab/ci/templates/Jobs/SAST.latest.gitlab-ci.yml
+
+stages:
+  - build
+  - test
+  - release
+
+build-momo-store-frontend:
+  stage: build
+  image: docker:20.10.12-dind-rootless
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd frontend
+    - >
+      docker build
+      --build-arg VERSION=$VERSION
+      --tag $CI_REGISTRY_IMAGE/momo-store-frontend:$CI_COMMIT_SHA
+      .
+    - docker push $CI_REGISTRY_IMAGE/momo-store-frontend:$CI_COMMIT_SHA
+  only:
+    changes:
+      - frontend/**/*
+
+sonarqube-momo-store-frontend:
+  stage: test
+  image: sonarsource/sonar-scanner-cli:latest
+  script:
+    - cd frontend
+    - >
+      sonar-scanner
+      -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY_MOMO_STORE_FRONTEND}
+      -Dsonar.sources=.
+      -Dsonar.host.url=${SONARQUBE_HOST_URL}
+      -Dsonar.login=${SONARQUBE_LOGIN_TOKEN_MOMO_STORE_FRONTEND}
+  needs:
+    - build-momo-store-frontend
+
+upload-momo-store-frontend-latest:
+  variables:
+    GIT_STRATEGY: none
+  image: docker:20.10.12-dind-rootless
+  stage: release
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker pull $CI_REGISTRY_IMAGE/momo-store-frontend:$CI_COMMIT_SHA
+    - docker tag $CI_REGISTRY_IMAGE/momo-store-frontend:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE/momo-store-frontend:latest
+    - docker push $CI_REGISTRY_IMAGE/momo-store-frontend:latest
+  needs:
+    - sonarqube-momo-store-frontend

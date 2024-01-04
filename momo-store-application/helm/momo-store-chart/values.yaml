@@ -1,0 +1,80 @@
+frontend:
+  frontend:
+    deployment:
+      apiVersion: apps/v1
+      metadata:
+        annotations:
+          prometheus_io_scrape: "true"
+          prometheus_io_path: /actuator/prometheus
+          prometheus_io_port: 8080
+      spec:
+        revisionHistoryLimit: 15
+        replicas: 2
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 50%
+        template:
+          spec:
+            containers:
+              image: gitlab.praktikum-services.ru:5050/std-017-027/momo-store-application/momo-store-frontend
+              imagePullPolicy: Always
+              ports:
+                containerPort: 80
+              volumeMounts:
+                name: nginx-conf
+                mountPath: /etc/nginx/conf.d/default.conf
+                subPath: nginx.conf
+                readOnly: true
+            volumes:
+              name: nginx-conf
+              configMap:
+                name: nginx-conf
+                items:
+                  key: nginx.conf
+                  path: nginx.conf
+            imagePullSecrets:
+              name: docker-config-secret
+    service:
+      apiVersion: v1
+      spec:
+        type: ClusterIP
+        ports:
+          port_1: 80
+          protocol_1: TCP
+          targetPort_1: 80
+backend:
+  backend:
+    deployment:
+      apiVersion: apps/v1
+      metadata:
+        annotations:
+          prometheus_io_scrape: "true"
+          prometheus_io_path: /metrics
+          prometheus_io_port: 8081
+      spec:
+        revisionHistoryLimit: 15
+        replicas: 2
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 50%
+        template:
+          spec:
+            containers:
+              image: gitlab.praktikum-services.ru:5050/std-017-027/momo-store-application/momo-store-backend
+              imagePullPolicy: Always
+              ports:
+                containerPort: 8081
+            imagePullSecrets:
+              name: docker-config-secret
+    service:
+      apiVersion: v1
+      spec:
+        type: ClusterIP
+        ports:
+          port_1: 8081
+          protocol_1: TCP
+          targetPort_1: 8081

@@ -1,0 +1,57 @@
+---
+apiVersion: {{ .Values.backend.deployment.apiVersion }}
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    app.kubernetes.io/component: {{ .Chart.Name }}
+    app.kubernetes.io/part-of: momo-store
+    component: {{ .Chart.Name }}
+  annotations:
+    prometheus.io/scrape: "{{ .Values.backend.deployment.metadata.annotations.prometheus_io_scrape }}"
+    prometheus.io/path: {{ .Values.backend.deployment.metadata.annotations.prometheus_io_path }}
+    prometheus.io/port: "{{ .Values.backend.deployment.metadata.annotations.prometheus_io_port }}"
+spec:
+  revisionHistoryLimit: {{ .Values.backend.deployment.spec.revisionHistoryLimit }}
+  replicas: {{ .Values.backend.deployment.spec.replicas }}
+  strategy:
+    type: {{ .Values.backend.deployment.spec.strategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.backend.deployment.spec.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.backend.deployment.spec.strategy.rollingUpdate.maxSurge }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      name: {{ .Chart.Name }}
+      labels:
+        app: {{ .Chart.Name }}
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: "{{ .Release.Name }}"
+        app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
+        app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        app.kubernetes.io/component: {{ .Chart.Name }}
+        app.kubernetes.io/part-of: momo-store
+        component: {{ .Chart.Name }}
+      annotations:
+        prometheus.io/scrape: "{{ .Values.backend.deployment.metadata.annotations.prometheus_io_scrape }}"
+        prometheus.io/path: {{ .Values.backend.deployment.metadata.annotations.prometheus_io_path }}
+        prometheus.io/port: "{{ .Values.backend.deployment.metadata.annotations.prometheus_io_port }}"
+    spec:
+      containers:
+        - image: "{{ .Values.backend.deployment.spec.template.spec.containers.image }}:{{ .Chart.AppVersion }}"
+          name: {{ .Chart.Name }}
+          imagePullPolicy: Always
+          ports:
+            - name: {{ .Chart.Name }}
+              containerPort: {{ .Values.backend.deployment.spec.template.spec.containers.ports.containerPort }}
+      imagePullSecrets:
+        - name: {{ .Values.backend.deployment.spec.template.spec.imagePullSecrets.name }}

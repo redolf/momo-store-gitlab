@@ -1,0 +1,57 @@
+---
+apiVersion: {{ .Values.frontend.deployment.apiVersion }}
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    app.kubernetes.io/component: {{ .Chart.Name }}
+    app.kubernetes.io/part-of: momo-store
+    component: {{ .Chart.Name }}
+  annotations:
+    prometheus.io/scrape: "{{ .Values.frontend.deployment.metadata.annotations.prometheus_io_scrape }}"
+    prometheus.io/path: {{ .Values.frontend.deployment.metadata.annotations.prometheus_io_path }}
+    prometheus.io/port: "{{ .Values.frontend.deployment.metadata.annotations.prometheus_io_port }}"
+
+spec:
+  revisionHistoryLimit: {{ .Values.frontend.deployment.spec.revisionHistoryLimit }}
+  replicas: {{ .Values.frontend.deployment.spec.replicas }}
+  strategy:
+    type: {{ .Values.frontend.deployment.spec.strategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.frontend.deployment.spec.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.frontend.deployment.spec.strategy.rollingUpdate.maxSurge }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      containers:
+        - image: "{{ .Values.frontend.deployment.spec.template.spec.containers.image }}:{{ .Chart.AppVersion }}"
+          name: {{ .Chart.Name }}
+          imagePullPolicy: {{ .Values.frontend.deployment.spec.template.spec.containers.imagePullPolicy }}
+          ports:
+            - name: {{ .Chart.Name }}
+              containerPort: {{ .Values.frontend.deployment.spec.template.spec.containers.ports.containerPort }}
+          volumeMounts:
+            - name: {{ .Values.frontend.deployment.spec.template.spec.containers.volumeMounts.name }}
+              mountPath: {{ .Values.frontend.deployment.spec.template.spec.containers.volumeMounts.mountPath }}
+              subPath: {{ .Values.frontend.deployment.spec.template.spec.containers.volumeMounts.subPath }}
+              readOnly: {{ .Values.frontend.deployment.spec.template.spec.containers.volumeMounts.readOnly }}
+      volumes:
+        - name: {{ .Values.frontend.deployment.spec.template.spec.volumes.name }}
+          configMap:
+            name: {{ .Values.frontend.deployment.spec.template.spec.volumes.configMap.name }}
+            items:
+              - key: {{ .Values.frontend.deployment.spec.template.spec.volumes.configMap.items.key }}
+                path: {{ .Values.frontend.deployment.spec.template.spec.volumes.configMap.items.path }}
+      imagePullSecrets:
+        - name: {{ .Values.frontend.deployment.spec.template.spec.imagePullSecrets.name }}

@@ -1,0 +1,49 @@
+stages:
+  - release
+  - deploy
+
+release-helm-momo-store:
+  stage: release
+  before_script:
+  - curl -LO https://get.helm.sh/helm-v3.13.2-linux-amd64.tar.gz
+  - tar -zxvf helm-v3.13.2-linux-amd64.tar.gz
+  - mv ./linux-amd64/helm /usr/local/bin/helm
+  script:
+    - cd ./helm
+    - mkdir ./momo-store-chart/templates
+    - echo "$SECRETS_HELM_ALL" | base64 -d > ./momo-store-chart/templates/secrets.yaml
+    - helm package ./momo-store-chart
+    - CHART_FILE=$(find ./ -name 'momo-store*.tgz' -type f -exec basename {} \;)
+    - curl -u $NEXUS_USER:$NEXUS_PASSWORD $NEXUS_REPO_HELM --upload-file ./$CHART_FILE
+
+deploy-helm-momo-store:
+  stage: deploy
+  before_script:
+    - mkdir ~/.kube
+    - touch ~/.kube/config
+    - echo "$KUBECONFIG_FILE" | base64 -d > ~/.kube/config
+    - curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/
+    - curl -LO https://get.helm.sh/helm-v3.13.2-linux-amd64.tar.gz
+    - tar -zxvf helm-v3.13.2-linux-amd64.tar.gz
+    - mv ./linux-amd64/helm /usr/local/bin/helm
+  script:
+    - helm repo add nexus $NEXUS_REPO_HELM --username $NEXUS_USER --password $NEXUS_PASSWORD
+    - helm repo update
+    - helm upgrade --namespace default --install momo-store --atomic --timeout 15m nexus/momo-store
+
+deploy-ingress:
+  stage: deploy
+  before_script:
+    - mkdir ~/.kube
+    - touch ~/.kube/config
+    - echo "$KUBECONFIG_FILE" | base64 -d > ~/.kube/config
+    - curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/
+  script:
+    - echo "$TLS_SECRET_MOMO_STORE" | base64 -d > ./helm/ingress/tls-secret-momo-store.yaml
+    - echo "$TLS_SECRET_GRAFANA" | base64 -d > ./helm/ingress/tls-secret-grafana.yaml
+    - kubectl apply -f ./helm/ingress --namespace default
+  
